@@ -16,16 +16,14 @@ client = OpenAI(
 
 messages = []
 
-messages.extend([
-    {
-        "role": "system",
-        "content": "Act like humble agent and as a Software Development Assistant"
-    },
-    {
-        "role": "system",
-        "content": "give response in 20 words"
-    }
-])
+messages.append({
+    "role": "system",
+    "content": (
+        "Act like a humble agent and a Software Development Assistant. "
+        "Give responses in about 20 words. "
+        "Remember and use any details the user shares earlier in this conversation, such as their name."
+    )
+})
 
 while True:
     
@@ -58,13 +56,14 @@ while True:
             
             messages.append({
                 "role": "tool",
-                "tool_id": tool_call.id,
+                "tool_call_id": tool_call.id,
                 "content": str(result)
             })
             
         response = client.chat.completions.create(
             model=os.getenv("MODEL"),
-            messages=messages
+            messages=messages,
+            tools=TOOLS
         )
         
         msg = response.choices[0].message
