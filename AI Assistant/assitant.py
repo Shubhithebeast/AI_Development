@@ -1,10 +1,10 @@
-import json
 
-from tools import TOOLS, function_name_to_function_map
+from tools import TOOLS, run_tool
 
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+from utilities.utilities import log
 
 
 load_dotenv()
@@ -15,6 +15,8 @@ client = OpenAI(
 )
 
 messages = []
+
+MAX_STEPS = 5
 
 messages.append({
     "role": "system",
@@ -27,7 +29,7 @@ messages.append({
 
 while True:
     
-    user_input = input("\nShubham: ") 
+    user_input = input("\n💁 Shubham: ") 
     
     if user_input.lower() in ["exit", "quit", "bye", "goodbye"]:
         break   
@@ -37,22 +39,29 @@ while True:
         "content": user_input
     })
     
-    response = client.chat.completions.create(
-        model=os.getenv("MODEL"),
-        messages=messages,
-        tools=TOOLS
-    )
     
-    msg = response.choices[0].message
-    if msg.tool_calls:
+    #chain tool calling
+    for step in range(MAX_STEPS):
+        
+        response = client.chat.completions.create(
+            model=os.getenv("MODEL"),
+            messages=messages,
+            tools=TOOLS
+        )
+            
+        msg = response.choices[0].message
+        
+        if not msg.tool_calls:
+            break
+        
+        log(f"Step {step + 1}: model requested {len(msg.tool_calls)} tool calls")
+            
+            
         messages.append(msg)
         
         for tool_call in msg.tool_calls:
-            func_name = tool_call.function.name  
-            func_args = json.loads(tool_call.function.arguments or "{}")
             
-            fn = function_name_to_function_map.get(func_name)
-            result = fn(**func_args)
+            result = run_tool(tool_call);
             
             messages.append({
                 "role": "tool",
@@ -60,18 +69,20 @@ while True:
                 "content": str(result)
             })
             
-        response = client.chat.completions.create(
-            model=os.getenv("MODEL"),
-            messages=messages,
-            tools=TOOLS
-        )
-        
-        msg = response.choices[0].message
+    else:
+        fallback = "Maximum steps reached without completing the task."
+        messages.append({
+            "role": "assistant",
+            "content": fallback
+        })
+        print("🤖 Assistant: " + fallback)
+        continue
+            
             
     messages.append({
         "role": "assistant",
         "content": msg.content
     })
     
-    print("Assistant Response:" , msg.content)
+    print("\n🤖 Assistant: " , msg.content or "" )
 
