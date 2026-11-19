@@ -34,36 +34,57 @@ def get_weather(city):
 def get_city():
     return "Bangalore"
 
-def add_todo(task):
-    task = task.strip()
-    
-    if not task:
-        raise ValueError("Task cannot be empty")
-    
-    if os.path.exists(TOOL_FILE):
-        with open(TOOL_FILE, "r", encoding="utf-8") as file:
-            todos = json.load(file)
-    else:
-        todos = []
 
-    todos.append(task)
-
-    with open(TOOL_FILE, "w",encoding="utf-8") as file:
-        json.dump(todos, file, indent=4)
-
-    return f"Task '{task}' added successfully"
-
-def list_todos():
+def load_todos():
     if not os.path.exists(TOOL_FILE):
-        return "No tasks found"
+        return []
 
     with open(TOOL_FILE, "r", encoding="utf-8") as file:
         todos = json.load(file)
 
+    # purani file ke plain text tasks ko naye format mein badalta hai
+    return [{"task": t, "done": False} if isinstance(t, str) else t for t in todos]
+
+
+def save_todos(todos):
+    with open(TOOL_FILE, "w", encoding="utf-8") as file:
+        json.dump(todos, file, indent=4)
+
+
+def add_todo(task):
+    task = task.strip()
+
+    if not task:
+        raise ValueError("Task cannot be empty")
+
+    todos = load_todos()
+    todos.append({"task": task, "done": False})
+    save_todos(todos)
+
+    return f"Task '{task}' added successfully"
+
+
+def list_todos():
+    todos = load_todos()
+
     if not todos:
         return "No tasks found"
 
-    return "\n".join(f"{idx+1}. {todo}" for idx, todo in enumerate(todos))
+    return "\n".join(
+        f"{idx}. [{'x' if todo['done'] else ' '}] {todo['task']}"
+        for idx, todo in enumerate(todos, start=1)
+    )
+
+def complete_todo(number):
+    todos = load_todos()
+
+    if number < 1 or number > len(todos):
+        raise ValueError(f"No task with number {number}")
+
+    todos[number - 1]["done"] = True
+    save_todos(todos)
+
+    return f"Task '{todos[number - 1]['task']}' marked as completed"
 
 TOOLS =[
     {
@@ -132,6 +153,23 @@ TOOLS =[
                 "properties": {}
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "complete_todo",
+            "description": "Marks a task as completed using its number from the todo list",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "number": {
+                        "type": "integer",
+                        "description": "The task number shown in the todo list, starting from 1"
+                    }
+                },
+                "required": ["number"]
+            }
+        }
     }
 ]
 
@@ -140,7 +178,8 @@ function_name_to_function_map ={
     "get_weather": get_weather,
     "get_city": get_city,
     "add_todo": add_todo,
-    "list_todos": list_todos
+    "list_todos": list_todos,
+    "complete_todo": complete_todo
 }
 
 

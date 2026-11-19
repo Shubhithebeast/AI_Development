@@ -1,5 +1,14 @@
 [
-    "Learn AI tools",
-    "Learn disco",
-    "learn AI tutorials"
+    {
+        "task": "Learn AI tools",
+        "done": false
+    },
+    {
+        "task": "Learn disco",
+        "done": true
+    },
+    {
+        "task": "learn AI tutorials",
+        "done": false
+    }
 ]
